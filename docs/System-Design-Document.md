@@ -48,6 +48,7 @@ This is a design document for a robust dynamic product catalog micro-service sea
 - We will need to handle heavy-read operation for this system limitation: 40 query/sec, so we will need another search database such as Elastic search
 - Elastic search to handle the heavy-read searching queries, ranking (Eventual consistency)
 - Searching with attribute meaning it's strict search (must exist on the product), and the relation between them is AND on the search query
+- I assumed that different product-variants have different attributes
 
 ## Questions (Answer without designing the solution, only mention what you think)
 
@@ -120,7 +121,7 @@ The needed component to run this micro-service
 {
   id: UUID, // the variant_id
   search_text: text, // accumulated title + attribute values on one field to support queries like: Red t-shirt (red is an attributed)
-  attributes: [{ color: string, ... }] // array of object, contains all the variant attributes for filtering
+  attributes: { color: string, ... } // object contains all the variant attributes for filtering
   total_sold: number, // ranking field
 }
 ```
@@ -132,11 +133,11 @@ The needed component to run this micro-service
 - Path: `api/v0/products/search`
 - Method: GET
 - Query:
-  - text: String // required for the full-text search
-  - filters: Object => searchAttribute="search word"
+  - query: String // required for the full-text search
+  - filter: Object => searchAttribute="search word"
   - skip: number (default: 0)
   - limit: number (default: 50)
-  - final query will looks like: `?text="over-size T-Shirt"&filters.size=Large&filters.color=red`
+  - final query will looks like: `?query=over-size T-Shirt&filter[size]=Large&filter[color]=red`
 - Authorization: Not required for this task
 - Authentication: Not required for this task
 
@@ -145,10 +146,21 @@ The needed component to run this micro-service
 - This endpoint will call the elastic search service with the tuned user query
 - elastic search will return the results with product ids sorted in the way it should appear to the user (This guarantee search consistency)
 - get the product from postgres using the fetched ids from elastic search, join with product, supplier, category if needed
+- The result from postgres will be cached on redis for future use
 - Returns
   - Data: {totalCount: number, products: [] } with status code 200
   - Error: This service may not available if the elastic search is down or gives timeout with status code 504
   - Error: Bad request, validation error
+
+### Variants Creation/Syncing to Elastic
+
+- There are many analyzers our their in elastic search, I chose a simple one that do the job well and add some pre-indexing staff:
+  - I use `whitespace` analyzer as it's a simple one for full-text search this analyzer use whitespace to split phrases into words, the search much the spitted words
+  - Add the attributes to the indexed field to allow queries where the user search with attribute name inside the full-text search
+  - Lower cased the indexed field because the whitespace analyzer doesn't have the lowercase sensitivity on the search, I also search with query in lowercase
+  - As I said in the assumptions part that attributes will be used for exact filtering and said that the attributes are different for different product-variants so I used dynamic template to map elastic search schema attributes and make it of type `keyword`
+- You can create mock data with `../create-script.js` either you need to create data from scratch inside postgres and index it to elastic or you need to sync between postgres data and elastic index, you can uncomment the needed function and run the script with `node create-script.js` it will make 1 Million dummy record inside variants table and elastic index
+- I didn't go much on the update/delete path as the main purpose for this assessment is to create the search endpoint but I have write that any new create/update/delete in the variants table should be syncing using background job that will fetch the update from a message queue asynchronously.
 
 ## Benchmarking
 
