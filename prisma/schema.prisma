@@ -1,0 +1,60 @@
+// datasource
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// generator
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Supplier {
+  id          String   @id @db.Uuid @default(uuid())
+  name        String
+  contactEmail String?  @map("contact_email")
+  products    Product[]
+  variants    Variant[]
+
+  @@map("suppliers")
+}
+
+model Category {
+  id       String    @id @db.Uuid @default(uuid())
+  name     String
+  products Product[]
+  variants Variant[]
+
+  @@map("categories")
+}
+
+model Product {
+  id         String    @id @db.Uuid @default(uuid())
+  name       String
+  category   Category  @relation(fields: [categoryId], references: [id])
+  categoryId String    @db.Uuid @map("category_id")
+  supplier   Supplier  @relation(fields: [supplierId], references: [id])
+  supplierId String    @db.Uuid @map("supplier_id")
+  variants   Variant[]
+  createdAt  DateTime  @default(now()) @db.Timestamp(6) @map("created_at")
+
+  @@map("products")
+}
+
+model Variant {
+  id          String    @id @db.Uuid @default(uuid())
+  product     Product   @relation(fields: [productId], references: [id])
+  productId   String    @db.Uuid @map("product_id")
+  attributes  Json?     @db.JsonB
+  supplier    Supplier  @relation(fields: [supplierId], references: [id])
+  supplierId  String    @db.Uuid @map("supplier_id")
+  category    Category  @relation(fields: [categoryId], references: [id])
+  categoryId  String    @db.Uuid @map("category_id")
+  price       Decimal   @db.Decimal(18, 2)
+  stock       Int       @default(0)
+  sku         String    @unique
+  totalSold   Int       @default(0) @map("total_sold")
+  createdAt   DateTime  @default(now()) @db.Timestamp(6) @map("created_at")
+
+  @@map("variants")
+} 
