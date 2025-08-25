@@ -2,6 +2,8 @@
 
 A high-performance product catalog microservice with advanced search capabilities, caching, and dynamic filtering.
 
+You can find the full design document at [System Design Doc](./docs/System-Design-Document.md)
+
 ## Features
 
 - Full-text search with Elasticsearch
