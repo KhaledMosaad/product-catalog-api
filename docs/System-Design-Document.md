@@ -76,7 +76,7 @@ The needed component to run this micro-service
 - Elastic search cluster: Mainly serve the search queries, can be scalable, will return product ids and then full product will be fetched from postgres database
 - BullMQ: Sync between our main database and Elastic search, this is can be from background job running to fetch the data from queue and insert/create/update elastic search index
 - Postgres database: for transactions (support ACID for the business model),
-- Redis: Cache Layer for products after fetched from postgres database, This is can be user query cache or cache by product id, the second approach more useful for invalidate the cache
+- Redis: Cache Layer for products after fetched from postgres database, This is can be user query cache or cache by product id, the second approach more useful for invalidate the cache (After applying the cache layer over 1 million record, I found that the response time didn't decrease a lot much that the actual db query take, I think most obvious variable here to me is the fact that we get the product-variants from db using the primary index which already cached/fast enough and don't have a big difference compared to redis cache, After add another 1 million record the latency of the endpoint deceased from avg 70ms to avg 19ms which is very good tbh)
 - CI/CD: Github actions, docker, docker-compose for automatic deployments
 - Load balancer: for api traffic
 
@@ -148,7 +148,7 @@ The needed component to run this micro-service
 - get the product from postgres using the fetched ids from elastic search, join with product, supplier, category if needed
 - The result from postgres will be cached on redis for future use
 - Returns
-  - Data: {totalCount: number, products: [] } with status code 200
+  - Data: {total: number, products: [], skip: number, limit: number } with status code 200
   - Error: This service may not available if the elastic search is down or gives timeout with status code 504
   - Error: Bad request, validation error
 
@@ -161,7 +161,3 @@ The needed component to run this micro-service
   - As I said in the assumptions part that attributes will be used for exact filtering and said that the attributes are different for different product-variants so I used dynamic template to map elastic search schema attributes and make it of type `keyword`
 - You can create mock data with `../create-script.js` either you need to create data from scratch inside postgres and index it to elastic or you need to sync between postgres data and elastic index, you can uncomment the needed function and run the script with `node create-script.js` it will make 1 Million dummy record inside variants table and elastic index
 - I didn't go much on the update/delete path as the main purpose for this assessment is to create the search endpoint but I have write that any new create/update/delete in the variants table should be syncing using background job that will fetch the update from a message queue asynchronously.
-
-## Benchmarking
-
-TODO: Will make a benchmark on my machine for this service and provide it here
