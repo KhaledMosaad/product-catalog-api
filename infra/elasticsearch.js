@@ -46,6 +46,42 @@ class ElasticsearchService {
       throw error;
     }
   }
+
+  async searchVariants(query, filters = {}, skip = 0, limit = 50) {
+    const esQuery = {
+      index: this.indexName,
+      from: skip,
+      size: limit,
+      query: {
+        bool: {
+          must: query ? [{ match: { search_text: query } }] : [],
+          filter: Object.entries(filters).map(([k, v]) => ({
+            term: { [`attributes.${k}`]: v }
+          }))
+        }
+      },
+      sort: [{ total_sold: 'desc' }]
+    };
+
+    try {
+      const response = await this.client.search(esQuery);
+      console.log(response);
+      return {
+        hits: response.hits.hits.map(hit => ({
+          id: hit._source.id,
+          score: hit._score,
+          ...hit._source
+        })),
+        total: response.hits.total.value,
+        skip,
+        limit,
+      };
+    } catch (error) {
+      console.log(error)
+      throw error
+    }
+
+  }
 }
 
-module.exports = ElasticsearchService; 
+module.exports = ElasticsearchService;
