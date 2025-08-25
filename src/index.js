@@ -1,13 +1,14 @@
 const express = require('express');
 const { errorHandler } = require('./common/middlewares/errors');
 const ProductRouter = require('./modules/products/router/index');
-const { getElasticSearchService, getPrismaClient } = require('../infra/index');
+const { getElasticSearchService, getPrismaClient, getRedisService } = require('../infra/index');
 
 const app = express();
 
 // initialize singleton clients to the infra
 const prisma = getPrismaClient();
 const elasticService = getElasticSearchService();
+const redisService = getRedisService();
 
 app.use(express.json());
 
@@ -19,6 +20,7 @@ app.get('/health', async (req, res, next) => {
 
     // Check Elasticsearch connection
     await elasticService.client.ping();
+    redisService.connect();
 
     res.status(200).json({
       status: 'ok',
@@ -69,6 +71,7 @@ process.on('SIGINT', async () => {
   console.log('Shutting down gracefully...');
   await prisma.$disconnect();
   await elasticService.client.close();
+  await redisService.disconnect();
   process.exit(0);
 });
 
@@ -76,6 +79,7 @@ process.on('SIGTERM', async () => {
   console.log('Shutting down gracefully...');
   await prisma.$disconnect();
   await elasticsearchService.client.close();
+  await redisService.disconnect();
   process.exit(0);
 });
 
