@@ -1,4 +1,5 @@
 
+const { uniqueId } = require('lodash');
 const { getElasticSearchService, getPrismaClient } = require('./infra/index');
 
 const prisma = getPrismaClient();
@@ -102,7 +103,7 @@ const createMockData = async () => {
           attributes: attributes,
           price: parseFloat((Math.random() * 1000 + 10).toFixed(2)), // Random price between $10-$1010
           stock: Math.floor(Math.random() * 1000), // Random stock 0-999
-          sku: `SKU-${variantCounter.toString().padStart(7, '0')}`,
+          sku: `SKU-${variantCounter.toString().padStart(7, '0')}-${uniqueId()}`,
           totalSold: Math.floor(Math.random() * 100) // Random sales 0-99
         });
 
