@@ -13,6 +13,36 @@ You can find the full design document at [System Design Doc](./docs/System-Desig
 - RESTful API with validation
 - Docker containerization
 
+## Schema Diagram
+
+![Postgres Schema Diagram](./docs/Schema%20diagram.png)
+
+- `products` table
+
+  - Stores product metadata (`id`, `name`, `category_id`, `supplier_id`, `created_at`)
+  - Linked to `categories` and `suppliers`
+
+- `variants` table
+
+  - Stores product variant details (e.g. `price`, `stock`, `sku`, `attributes`)
+  - Has foreign keys: `product_id`, `category_id`, `supplier_id`
+  - Contains analytics field: `total_sold`
+
+- `categories` table
+
+  - Holds category definitions (`id`, `name`)
+  - Referenced by both `products` and `variants`
+
+- `suppliers` table
+
+  - Holds supplier info (`id`, `name`, `contact_email`)
+  - Linked to `products` and `variants`
+
+- **Relationships**
+
+  - `variants` is the central table, referencing `products`, `categories`, and `suppliers`
+  - `products` also references `categories` and `suppliers`
+
 ## Tech Stack
 
 - **Backend**: Node.js, Express.js
@@ -32,8 +62,8 @@ You can find the full design document at [System Design Doc](./docs/System-Desig
 1. Clone the repository
 
 ```bash
-git clone <repository-url>
-cd product-catalog-service
+git clone https://github.com/KhaledMosaad/product-catalog-api
+cd product-catalog-api
 ```
 
 2. Start the services
