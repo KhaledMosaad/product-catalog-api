@@ -1,24 +1,24 @@
 const express = require('express');
-const { PrismaClient } = require('@prisma/client');
-const ElasticsearchService = require('../services/elasticsearch');
 const { errorHandler } = require('./common/middlewares/errors');
-const { validate } = require('./common/middlewares/validation');
-const { healthValidation } = require('../test')
+const ProductRouter = require('./modules/products/router/index');
+const { getElasticSearchService, getPrismaClient } = require('../infra/index');
 
 const app = express();
-const prisma = new PrismaClient();
-const elasticsearchService = new ElasticsearchService();
+
+// initialize singleton clients to the infra
+const prisma = getPrismaClient();
+const elasticService = getElasticSearchService();
 
 app.use(express.json());
 
 // Health check endpoint
-app.get('/health', validate(healthValidation), async (req, res, next) => {
+app.get('/health', async (req, res, next) => {
   try {
     // Check database connection
     await prisma.$queryRaw`SELECT 1`;
 
     // Check Elasticsearch connection
-    await elasticsearchService.client.ping();
+    await elasticService.client.ping();
 
     res.status(200).json({
       status: 'ok',
@@ -31,8 +31,12 @@ app.get('/health', validate(healthValidation), async (req, res, next) => {
   }
 });
 
+// Add the product router
+app.use(ProductRouter);
+
 // Error handling middleware
 app.use(errorHandler);
+
 
 // 404 handler
 app.use('*', (req, res) => {
@@ -46,7 +50,7 @@ app.use('*', (req, res) => {
 async function startServer() {
   try {
     console.log('Initializing Elasticsearch...');
-    await elasticsearchService.initialize();
+    await elasticService.initialize();
     console.log('Elasticsearch initialized successfully');
 
     const port = process.env.SERVER_PORT || 3000;
@@ -64,7 +68,7 @@ async function startServer() {
 process.on('SIGINT', async () => {
   console.log('Shutting down gracefully...');
   await prisma.$disconnect();
-  await elasticsearchService.client.close();
+  await elasticService.client.close();
   process.exit(0);
 });
 
