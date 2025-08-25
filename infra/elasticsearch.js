@@ -1,5 +1,5 @@
 const { Client } = require('@elastic/elasticsearch');
-
+const _ = require('lodash');
 class ElasticsearchService {
   constructor() {
     this.client = new Client({
@@ -21,6 +21,28 @@ class ElasticsearchService {
           index: this.indexName,
           body: {
             mappings: {
+              dynamic_templates: [
+                {
+                  // All string fields in attributes become keywords (for exact filtering)
+                  attribute_strings: {
+                    match_mapping_type: "string",
+                    path_match: "attributes.*",
+                    mapping: {
+                      type: "keyword"
+                    }
+                  }
+                },
+                {
+                  // All numeric fields stay as numbers
+                  attribute_numbers: {
+                    match_mapping_type: "long",
+                    path_match: "attributes.*",
+                    mapping: {
+                      type: "long"
+                    }
+                  }
+                }
+              ],
               properties: {
                 // No need for analysis
                 id: { type: 'keyword' },
@@ -31,8 +53,8 @@ class ElasticsearchService {
                   analyzer: 'whitespace'
                 },
                 attributes: {
-                  type: 'nested',
-                  dynamic: true,
+                  type: 'object',
+                  dynamic: true
                 },
                 total_sold: { type: 'integer' }
               }
@@ -47,7 +69,7 @@ class ElasticsearchService {
     }
   }
 
-  async searchVariants(query, filters = {}, skip = 0, limit = 50) {
+  async searchVariants(query, filters = {}, skip = 0, limit = 50, selectedFields = null) {
     const esQuery = {
       index: this.indexName,
       from: skip,
@@ -63,13 +85,14 @@ class ElasticsearchService {
       sort: [{ total_sold: 'desc' }]
     };
 
+    if (!_.isNil(selectedFields)) {
+      esQuery._source = selectedFields;
+    }
+
     try {
       const response = await this.client.search(esQuery);
-      console.log(response);
       return {
         hits: response.hits.hits.map(hit => ({
-          id: hit._source.id,
-          score: hit._score,
           ...hit._source
         })),
         total: response.hits.total.value,
