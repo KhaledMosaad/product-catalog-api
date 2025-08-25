@@ -49,6 +49,7 @@ This is a design document for a robust dynamic product catalog micro-service sea
 - Elastic search to handle the heavy-read searching queries, ranking (Eventual consistency)
 - Searching with attribute meaning it's strict search (must exist on the product), and the relation between them is AND on the search query
 - I assumed that different product-variants have different attributes
+- I assumed that the creation of the index will be in this form: `${product.name} ...${variant.attributes.values}}`
 
 ## Questions (Answer without designing the solution, only mention what you think)
 
