@@ -74,6 +74,8 @@ class ElasticsearchService {
       index: this.indexName,
       from: skip,
       size: limit,
+      // elastic search usually return default total not more than 10,000 this `track_total_hits: true` will give the actual total hit number
+      track_total_hits: true,
       query: {
         bool: {
           must: query ? [{ match: { search_text: query } }] : [],
